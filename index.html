@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>Kasa samoobsługowa</title>
+<style>
+:root{font-family:Arial,Helvetica,sans-serif;color:#f7f9fc;background:#101827}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(145deg,#111d30,#0b1220)}
+button,input{font:inherit}button{border:0;border-radius:14px;padding:14px 18px;font-weight:700;cursor:pointer}
+.top{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid #29364a}
+.brand{font-size:clamp(20px,4vw,28px);font-weight:800}.brand span{color:#62e6a7}
+.edit{background:#27364d;color:white;border:1px solid #41516a}
+main{max-width:1100px;margin:28px auto;padding:0 18px;display:grid;grid-template-columns:1.3fr .7fr;gap:22px}
+.panel{background:#172338;border:1px solid #2b3a52;border-radius:22px;padding:22px;box-shadow:0 14px 35px #0003}
+h2{margin:0 0 18px;font-size:22px}.muted{color:#9eacc0}
+.big{width:100%;padding:22px;background:#22c982;color:#062719;font-size:20px;margin-bottom:12px}
+.secondary{width:100%;background:#2c3d56;color:white;font-size:17px}
+.cart-list{min-height:190px}.empty{text-align:center;padding:55px 10px;color:#91a1b8}
+.item{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #2b3a52}
+.item small{display:block;color:#9eacc0;margin-top:4px}.price{white-space:nowrap;font-weight:700}
+.total{display:flex;justify-content:space-between;font-size:24px;font-weight:800;padding-top:18px;margin-top:12px;border-top:1px solid #41516a}
+.notice{font-size:13px;color:#9eacc0;line-height:1.5;margin-top:15px}
+.overlay{position:fixed;inset:0;background:#07101df5;z-index:10;display:none;overflow:auto;padding:22px}
+.overlay.show{display:block}.modal{max-width:620px;margin:6vh auto;background:#172338;border:1px solid #40516a;border-radius:22px;padding:24px}
+.full{max-width:1000px;margin:0 auto;min-height:calc(100vh - 44px)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:1}
+input{width:100%;padding:14px;border-radius:12px;border:1px solid #465873;background:#0d1727;color:white;margin:7px 0 14px;outline:none}
+label{font-size:14px;color:#c1ccda}.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.action{background:#2b3e59;color:white;width:100%;margin:6px 0}.danger{background:#a83b4a;color:white}.green{background:#22c982;color:#062719}
+.product-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #34445b}
+.product-row button{padding:9px 12px;background:#a83b4a;color:white}
+.close{background:#354760;color:white}
+#video{width:100%;max-height:55vh;background:#05090f;border-radius:16px;object-fit:cover}
+#scanStatus{margin:12px 0;color:#b9c7d8}
+@media(max-width:760px){main{grid-template-columns:1fr;margin:16px auto}.panel{padding:18px}.admin-grid{grid-template-columns:1fr}.overlay{padding:12px}.modal{padding:18px;margin:4vh auto}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">Kasa <span>samoobsługowa</span></div>
+  <button class="edit" onclick="openPin()">⚙ Zmień</button>
+</header>
+<main>
+  <section class="panel">
+    <h2>Witaj! Zeskanuj swoje produkty</h2>
+    <button class="big" onclick="openScanner()">▦　Prob́ij towar / Skanuj kod</button>
+    <button class="secondary" onclick="openManual()">＋ Dodaj produkt ręcznie</button>
+    <p class="notice">Skanowanie wymaga zgody na użycie aparatu. Jeśli przeglądarka nie obsługuje skanowania kodów, możesz wpisać kod ręcznie.</p>
+  </section>
+  <section class="panel">
+    <h2>Twoja корзyna</h2>
+    <div id="cart" class="cart-list"></div>
+    <div class="total"><span>Do zapłaty</span><span id="total">0,00 zł</span></div>
+  </section>
+</main>
+
+<div class="overlay" id="pinOverlay">
+ <div class="modal">
+  <h2>Panel administratora</h2>
+  <label>Wpisz PIN</label><input id="pinInput" type="password" inputmode="numeric" placeholder="PIN" maxlength="4">
+  <div class="row"><button class="green" onclick="checkPin()">Otwórz</button><button class="close" onclick="hide('pinOverlay')">Anuluj</button></div>
+  <p id="pinError" class="notice"></p>
+ </div>
+</div>
+
+<div class="overlay" id="adminOverlay">
+ <div class="modal full">
+  <div class="row"><h2>Panel zarządzania</h2><button class="close" style="flex:0 0 auto" onclick="hide('adminOverlay')">Zamknij ✕</button></div>
+  <div class="admin-grid">
+   <button class="action" onclick="showCartEditor()">🛒 Zmień koszyk</button>
+   <button class="action" onclick="showAddProduct()">＋ Dodaj produkt do systemu</button>
+  </div>
+  <div id="adminContent" style="margin-top:22px"></div>
+ </div>
+</div>
+
+<div class="overlay" id="scannerOverlay">
+ <div class="modal full">
+  <div class="row"><h2>Skanowanie produktu</h2><button class="close" style="flex:0 0 auto" onclick="stopScanner()">Zamknij ✕</button></div>
+  <video id="video" autoplay muted playsinline></video>
+  <div id="scanStatus">Uruchamiam aparat…</div>
+  <label>Lub wpisz / wklej kod kreskowy</label>
+  <div class="row"><input id="barcodeInput" placeholder="Kod kreskowy"><button class="green" style="flex:0 0 auto" onclick="addByBarcode()">Dodaj</button></div>
+  <p class="notice">Aparat uruchomi się po zezwoleniu. Niektóre przeglądarki nie obsługują automatycznego odczytu kodów.</p>
+ </div>
+</div>
+
+<div class="overlay" id="manualOverlay">
+ <div class="modal">
+  <h2>Dodaj produkt</h2>
+  <label>Kod kreskowy lub nazwa</label><input id="manualCode" placeholder="Np. 5901234123457">
+  <div class="row"><button class="green" onclick="manualAdd()">Dodaj do koszyka</button><button class="close" onclick="hide('manualOverlay')">Anuluj</button></div>
+ </div>
+</div>
+
+<script>
+const defaultProducts = [
+ {name:"Woda 500 ml",price:2.99,barcode:"590000000001"},
+ {name:"Chleb",price:4.50,barcode:"590000000002"},
+ {name:"Mleko 1 l",price:3.79,barcode:"590000000003"},
+ {name:"Czekolada",price:5.49,barcode:"590000000004"}
+];
+let products = JSON.parse(localStorage.getItem("kasaProducts") || "null") || defaultProducts;
+let cart = [];
+let stream = null, scanTimer = null, detector = null;
+const money = n => n.toFixed(2).replace(".",",")+" zł";
+const saveProducts = () => localStorage.setItem("kasaProducts",JSON.stringify(products));
+function hide(id){document.getElementById(id).classList.remove("show")}
+function openPin(){document.getElementById("pinInput").value="";document.getElementById("pinError").textContent="";document.getElementById("pinOverlay").classList.add("show")}
+function checkPin(){
+ const pin=document.getElementById("pinInput").value;
+ if(pin==="5634"||pin==="0989"){hide("pinOverlay");document.getElementById("adminOverlay").classList.add("show");showCartEditor()}
+ else document.getElementById("pinError").textContent="Nieprawidłowy PIN. Spróbuj ponownie.";
+}
+function renderCart(){
+ const el=document.getElementById("cart");
+ if(!cart.length) el.innerHTML='<div class="empty">Koszyk jest pusty</div>';
+ else el.innerHTML=cart.map((p,i)=>`<div class="item"><div><b>${escapeHtml(p.name)}</b><small>${p.qty} szt. × ${money(p.price)}</small></div><div class="price">${money(p.qty*p.price)}</div></div>`).join("");
+ document.getElementById("total").textContent=money(cart.reduce((s,p)=>s+p.price*p.qty,0));
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function addProduct(p){
+ if(!p){alert("Nie znaleziono produktu w systemie.");return}
+ const found=cart.find(x=>x.barcode===p.barcode);
+ if(found)found.qty++;else cart.push({...p,qty:1});
+ renderCart();
+}
+function findProduct(code){return products.find(p=>p.barcode===code || p.name.toLowerCase()===code.toLowerCase())}
+function openManual(){document.getElementById("manualCode").value="";document.getElementById("manualOverlay").classList.add("show")}
+function manualAdd(){const v=document.getElementById("manualCode").value.trim();if(!v)return;addProduct(findProduct(v));hide("manualOverlay")}
+function addByBarcode(){const v=document.getElementById("barcodeInput").value.trim();if(v){addProduct(findProduct(v));document.getElementById("barcodeInput").value=""}}
+function showCartEditor(){
+ const c=document.getElementById("adminContent");
+ c.innerHTML="<h2>Produkty w koszyku</h2>";
+ if(!cart.length)c.innerHTML+="<p class='muted'>Koszyk jest pusty.</p>";
+ cart.forEach((p,i)=>{c.innerHTML+=`<div class="product-row"><div><b>${escapeHtml(p.name)}</b><div class="muted">${p.qty} szt. · ${money(p.price)}</div></div><button onclick="removeCartItem(${i})">Usuń</button></div>`});
+}
+function removeCartItem(i){cart.splice(i,1);renderCart();showCartEditor()}
+function showAddProduct(){
+ document.getElementById("adminContent").innerHTML=`
+ <h2>Dodaj produkt do systemu</h2>
+ <label>Nazwa produktu</label><input id="newName" placeholder="Np. Sok jabłkowy">
+ <label>Cena (zł)</label><input id="newPrice" type="number" min="0" step="0.01" placeholder="Np. 4.99">
+ <label>Kod kreskowy</label><input id="newBarcode" placeholder="Wpisz lub wklej kod">
+ <button class="green" onclick="saveNewProduct()">Zapisz produkt</button>
+ <p class="notice">Produkt zostanie zapisany w tej przeglądarce.</p>`;
+}
+function saveNewProduct(){
+ const name=document.getElementById("newName").value.trim(),price=Number(document.getElementById("newPrice").value),barcode=document.getElementById("newBarcode").value.trim();
+ if(!name||!barcode||!Number.isFinite(price)||price<0){alert("Uzupełnij nazwę, poprawną cenę i kod.");return}
+ if(products.some(p=>p.barcode===barcode)){alert("Produkt z takim kodem już istnieje.");return}
+ products.push({name,price,barcode});saveProducts();alert("Produkt dodany do systemu.");showAddProduct();
+}
+async function openScanner(){
+ document.getElementById("scannerOverlay").classList.add("show");
+ document.getElementById("scanStatus").textContent="Proszę zezwolić na dostęp do aparatu.";
+ try{
+  if(!navigator.mediaDevices?.getUserMedia)throw new Error("Brak obsługi aparatu. Otwórz stronę przez HTTPS lub localhost.");
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});
+  const video=document.getElementById("video");video.srcObject=stream;await video.play();
+  if(!("BarcodeDetector" in window))throw new Error("Aparat działa, ale ta przeglądarka nie ma wbudowanego czytnika kodów. Wpisz kod ręcznie.");
+  detector=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code"]});
+  document.getElementById("scanStatus").textContent="Skieruj aparat na kod kreskowy.";
+  scanTimer=setInterval(async()=>{
+   try{if(video.readyState<2)return;const codes=await detector.detect(video);if(codes.length){const code=codes[0].rawValue;document.getElementById("barcodeInput").value=code;addByBarcode();document.getElementById("scanStatus").textContent="Odczytano: "+code;}}
+   catch(e){}
+  },500);
+ }catch(e){document.getElementById("scanStatus").textContent=e.message}
+}
+function stopScanner(){
+ if(scanTimer)clearInterval(scanTimer);scanTimer=null;
+ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+ document.getElementById("video").srcObject=null;hide("scannerOverlay");
+}
+renderCart();
+</script>
+</body>
+</html>
