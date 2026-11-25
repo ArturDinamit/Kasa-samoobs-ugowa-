@@ -28,12 +28,14 @@ h2{margin:0 0 18px;font-size:22px}.muted{color:#9eacc0}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:1}
 input{width:100%;padding:14px;border-radius:12px;border:1px solid #465873;background:#0d1727;color:white;margin:7px 0 14px;outline:none}
 label{font-size:14px;color:#c1ccda}.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.action{background:#2b3e59;color:white;width:100%;margin:6px 0}.danger{background:#a83b4a;color:white}.green{background:#22c982;color:#062719}
+.action{background:#2b3e59;color:white;width:100%;margin:6px 0}.green{background:#22c982;color:#062719}
 .product-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #34445b}
-.product-row button{padding:9px 12px;background:#a83b4a;color:white}
-.close{background:#354760;color:white}
+.product-row button{padding:9px 12px;background:#a83b4a;color:white}.close{background:#354760;color:white}
 #video{width:100%;max-height:55vh;background:#05090f;border-radius:16px;object-fit:cover}
-#scanStatus{margin:12px 0;color:#b9c7d8}
+#scanStatus,#imageScanStatus{margin:12px 0;color:#b9c7d8}
+.file-button{display:block;width:100%;text-align:center;background:#2b3e59;color:white;border-radius:14px;padding:14px 18px;font-weight:700;cursor:pointer;margin:7px 0}
+.file-button input{display:none}
+.image-preview{display:none;max-width:100%;max-height:280px;margin:12px auto;border-radius:12px;border:1px solid #465873}
 @media(max-width:760px){main{grid-template-columns:1fr;margin:16px auto}.panel{padding:18px}.admin-grid{grid-template-columns:1fr}.overlay{padding:12px}.modal{padding:18px;margin:4vh auto}}
 </style>
 </head>
@@ -47,7 +49,6 @@ label{font-size:14px;color:#c1ccda}.admin-grid{display:grid;grid-template-column
     <h2>Witaj! Zeskanuj swoje produkty</h2>
     <button class="big" onclick="openScanner()">▦　Prob́ij towar / Skanuj kod</button>
     <button class="secondary" onclick="openManual()">＋ Dodaj produkt ręcznie</button>
-    <p class="notice">Skanowanie wymaga zgody na użycie aparatu. Jeśli przeglądarka nie obsługuje skanowania kodów, możesz wpisać kod ręcznie.</p>
   </section>
   <section class="panel">
     <h2>Twoja корзyna</h2>
@@ -57,85 +58,116 @@ label{font-size:14px;color:#c1ccda}.admin-grid{display:grid;grid-template-column
 </main>
 
 <div class="overlay" id="pinOverlay">
- <div class="modal">
-  <h2>Panel administratora</h2>
-  <label>Wpisz PIN</label><input id="pinInput" type="password" inputmode="numeric" placeholder="PIN" maxlength="4">
-  <div class="row"><button class="green" onclick="checkPin()">Otwórz</button><button class="close" onclick="hide('pinOverlay')">Anuluj</button></div>
-  <p id="pinError" class="notice"></p>
- </div>
+  <div class="modal">
+    <h2>Panel administratora</h2>
+    <label>Wpisz PIN</label>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="4">
+    <div class="row">
+      <button class="green" onclick="checkPin()">Otwórz</button>
+      <button class="close" onclick="hide('pinOverlay')">Anuluj</button>
+    </div>
+    <p id="pinError" class="notice"></p>
+  </div>
 </div>
 
 <div class="overlay" id="adminOverlay">
- <div class="modal full">
-  <div class="row"><h2>Panel zarządzania</h2><button class="close" style="flex:0 0 auto" onclick="hide('adminOverlay')">Zamknij ✕</button></div>
-  <div class="admin-grid">
-   <button class="action" onclick="showCartEditor()">🛒 Zmień koszyk</button>
-   <button class="action" onclick="showAddProduct()">＋ Dodaj produkt do systemu</button>
+  <div class="modal full">
+    <div class="row">
+      <h2>Panel zarządzania</h2>
+      <button class="close" style="flex:0 0 auto" onclick="hide('adminOverlay')">Zamknij ✕</button>
+    </div>
+    <div class="admin-grid">
+      <button class="action" onclick="showCartEditor()">🛒 Zmień koszyk</button>
+      <button class="action" onclick="showAddProduct()">＋ Dodaj produkt do systemu</button>
+    </div>
+    <div id="adminContent" style="margin-top:22px"></div>
   </div>
-  <div id="adminContent" style="margin-top:22px"></div>
- </div>
 </div>
 
 <div class="overlay" id="scannerOverlay">
- <div class="modal full">
-  <div class="row"><h2>Skanowanie produktu</h2><button class="close" style="flex:0 0 auto" onclick="stopScanner()">Zamknij ✕</button></div>
-  <video id="video" autoplay muted playsinline></video>
-  <div id="scanStatus">Uruchamiam aparat…</div>
-  <label>Lub wpisz / wklej kod kreskowy</label>
-  <div class="row"><input id="barcodeInput" placeholder="Kod kreskowy"><button class="green" style="flex:0 0 auto" onclick="addByBarcode()">Dodaj</button></div>
-  <p class="notice">Aparat uruchomi się po zezwoleniu. Niektóre przeglądarki nie obsługują automatycznego odczytu kodów.</p>
- </div>
+  <div class="modal full">
+    <div class="row">
+      <h2>Skanowanie produktu</h2>
+      <button class="close" style="flex:0 0 auto" onclick="stopScanner()">Zamknij ✕</button>
+    </div>
+    <video id="video" autoplay muted playsinline></video>
+    <div id="scanStatus">Uruchamiam aparat…</div>
+    <label>Lub wpisz / wklej kod kreskowy</label>
+    <div class="row">
+      <input id="barcodeInput" placeholder="Kod kreskowy">
+      <button class="green" style="flex:0 0 auto" onclick="addByBarcode()">Dodaj</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="manualOverlay">
- <div class="modal">
-  <h2>Dodaj produkt</h2>
-  <label>Kod kreskowy lub nazwa</label><input id="manualCode" placeholder="Np. 5901234123457">
-  <div class="row"><button class="green" onclick="manualAdd()">Dodaj do koszyka</button><button class="close" onclick="hide('manualOverlay')">Anuluj</button></div>
- </div>
+  <div class="modal">
+    <h2>Dodaj produkt</h2>
+    <label>Kod kreskowy lub nazwa</label>
+    <input id="manualCode" placeholder="Np. 5901234123457">
+    <div class="row">
+      <button class="green" onclick="manualAdd()">Dodaj do koszyka</button>
+      <button class="close" onclick="hide('manualOverlay')">Anuluj</button>
+    </div>
+  </div>
 </div>
 
 <script>
-const defaultProducts = [
+const defaultProducts=[
  {name:"Woda 500 ml",price:2.99,barcode:"590000000001"},
  {name:"Chleb",price:4.50,barcode:"590000000002"},
  {name:"Mleko 1 l",price:3.79,barcode:"590000000003"},
  {name:"Czekolada",price:5.49,barcode:"590000000004"}
 ];
-let products = JSON.parse(localStorage.getItem("kasaProducts") || "null") || defaultProducts;
-let cart = [];
-let stream = null, scanTimer = null, detector = null;
-const money = n => n.toFixed(2).replace(".",",")+" zł";
-const saveProducts = () => localStorage.setItem("kasaProducts",JSON.stringify(products));
+let products=JSON.parse(localStorage.getItem("kasaProducts")||"null")||defaultProducts;
+let cart=[];
+let stream=null,scanTimer=null,detector=null;
+const money=n=>n.toFixed(2).replace(".",",")+" zł";
+const saveProducts=()=>localStorage.setItem("kasaProducts",JSON.stringify(products));
+
 function hide(id){document.getElementById(id).classList.remove("show")}
 function openPin(){document.getElementById("pinInput").value="";document.getElementById("pinError").textContent="";document.getElementById("pinOverlay").classList.add("show")}
 function checkPin(){
  const pin=document.getElementById("pinInput").value;
- if(pin==="5634"||pin==="0989"){hide("pinOverlay");document.getElementById("adminOverlay").classList.add("show");showCartEditor()}
- else document.getElementById("pinError").textContent="Nieprawidłowy PIN. Spróbuj ponownie.";
-}
-function renderCart(){
- const el=document.getElementById("cart");
- if(!cart.length) el.innerHTML='<div class="empty">Koszyk jest pusty</div>';
- else el.innerHTML=cart.map((p,i)=>`<div class="item"><div><b>${escapeHtml(p.name)}</b><small>${p.qty} szt. × ${money(p.price)}</small></div><div class="price">${money(p.qty*p.price)}</div></div>`).join("");
- document.getElementById("total").textContent=money(cart.reduce((s,p)=>s+p.price*p.qty,0));
+ if(pin==="5634"||pin==="0989"){
+  hide("pinOverlay");
+  document.getElementById("adminOverlay").classList.add("show");
+  showCartEditor();
+ }else{
+  document.getElementById("pinError").textContent="Nieprawidłowy PIN.";
+ }
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function renderCart(){
+ const el=document.getElementById("cart");
+ if(!cart.length){
+  el.innerHTML='<div class="empty">Koszyk jest pusty</div>';
+ }else{
+  el.innerHTML=cart.map(p=>`
+   <div class="item">
+    <div><b>${escapeHtml(p.name)}</b><small>${p.qty} szt. × ${money(p.price)}</small></div>
+    <div class="price">${money(p.qty*p.price)}</div>
+   </div>`).join("");
+ }
+ document.getElementById("total").textContent=money(cart.reduce((s,p)=>s+p.price*p.qty,0));
+}
 function addProduct(p){
  if(!p){alert("Nie znaleziono produktu w systemie.");return}
  const found=cart.find(x=>x.barcode===p.barcode);
  if(found)found.qty++;else cart.push({...p,qty:1});
  renderCart();
 }
-function findProduct(code){return products.find(p=>p.barcode===code || p.name.toLowerCase()===code.toLowerCase())}
+function findProduct(code){return products.find(p=>p.barcode===code||p.name.toLowerCase()===code.toLowerCase())}
 function openManual(){document.getElementById("manualCode").value="";document.getElementById("manualOverlay").classList.add("show")}
-function manualAdd(){const v=document.getElementById("manualCode").value.trim();if(!v)return;addProduct(findProduct(v));hide("manualOverlay")}
+function manualAdd(){const v=document.getElementById("manualCode").value.trim();if(v){addProduct(findProduct(v));hide("manualOverlay")}}
 function addByBarcode(){const v=document.getElementById("barcodeInput").value.trim();if(v){addProduct(findProduct(v));document.getElementById("barcodeInput").value=""}}
 function showCartEditor(){
  const c=document.getElementById("adminContent");
  c.innerHTML="<h2>Produkty w koszyku</h2>";
  if(!cart.length)c.innerHTML+="<p class='muted'>Koszyk jest pusty.</p>";
- cart.forEach((p,i)=>{c.innerHTML+=`<div class="product-row"><div><b>${escapeHtml(p.name)}</b><div class="muted">${p.qty} szt. · ${money(p.price)}</div></div><button onclick="removeCartItem(${i})">Usuń</button></div>`});
+ cart.forEach((p,i)=>{
+  c.innerHTML+=`<div class="product-row"><div><b>${escapeHtml(p.name)}</b><div class="muted">${p.qty} szt. · ${money(p.price)}</div></div><button onclick="removeCartItem(${i})">Usuń</button></div>`;
+ });
 }
 function removeCartItem(i){cart.splice(i,1);renderCart();showCartEditor()}
 function showAddProduct(){
@@ -144,35 +176,87 @@ function showAddProduct(){
  <label>Nazwa produktu</label><input id="newName" placeholder="Np. Sok jabłkowy">
  <label>Cena (zł)</label><input id="newPrice" type="number" min="0" step="0.01" placeholder="Np. 4.99">
  <label>Kod kreskowy</label><input id="newBarcode" placeholder="Wpisz lub wklej kod">
- <button class="green" onclick="saveNewProduct()">Zapisz produkt</button>
- <p class="notice">Produkt zostanie zapisany w tej przeglądarce.</p>`;
+ <label class="file-button">
+  📷 Wybierz zdjęcie kodu z galerii
+  <input id="barcodeImage" type="file" accept="image/*" onchange="scanBarcodeImage(event)">
+ </label>
+ <img id="barcodePreview" class="image-preview" alt="Podgląd kodu">
+ <div id="imageScanStatus" class="notice">Wybierz zdjęcie ze swojej galerii.</div>
+ <button class="green" onclick="saveNewProduct()">Zapisz produkt</button>`;
+}
+async function scanBarcodeImage(event){
+ const file=event.target.files&&event.target.files[0];
+ if(!file)return;
+ const status=document.getElementById("imageScanStatus");
+ const preview=document.getElementById("barcodePreview");
+ preview.src=URL.createObjectURL(file);
+ preview.style.display="block";
+ if(!("BarcodeDetector" in window)){
+  status.textContent="Ta przeglądarka nie obsługuje odczytu zdjęć. Wpisz kod ręcznie.";
+  return;
+ }
+ status.textContent="Rozpoznawanie kodu…";
+ try{
+  const bitmap=await createImageBitmap(file);
+  const imageDetector=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code"]});
+  const codes=await imageDetector.detect(bitmap);
+  if(!codes.length){
+   status.textContent="Nie udało się odczytać kodu. Spróbuj wyraźniejszego zdjęcia.";
+   bitmap.close();
+   return;
+  }
+  const code=codes[0].rawValue;
+  document.getElementById("newBarcode").value=code;
+  status.textContent="Odczytano kod: "+code;
+  bitmap.close();
+ }catch(error){
+  status.textContent="Błąd odczytu: "+error.message;
+ }
 }
 function saveNewProduct(){
- const name=document.getElementById("newName").value.trim(),price=Number(document.getElementById("newPrice").value),barcode=document.getElementById("newBarcode").value.trim();
- if(!name||!barcode||!Number.isFinite(price)||price<0){alert("Uzupełnij nazwę, poprawną cenę i kod.");return}
+ const name=document.getElementById("newName").value.trim();
+ const price=Number(document.getElementById("newPrice").value);
+ const barcode=document.getElementById("newBarcode").value.trim();
+ if(!name||!barcode||!Number.isFinite(price)||price<0){alert("Uzupełnij wszystkie pola.");return}
  if(products.some(p=>p.barcode===barcode)){alert("Produkt z takim kodem już istnieje.");return}
- products.push({name,price,barcode});saveProducts();alert("Produkt dodany do systemu.");showAddProduct();
+ products.push({name,price,barcode});
+ saveProducts();
+ alert("Produkt dodany.");
+ showAddProduct();
 }
 async function openScanner(){
  document.getElementById("scannerOverlay").classList.add("show");
  document.getElementById("scanStatus").textContent="Proszę zezwolić na dostęp do aparatu.";
  try{
-  if(!navigator.mediaDevices?.getUserMedia)throw new Error("Brak obsługi aparatu. Otwórz stronę przez HTTPS lub localhost.");
-  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});
-  const video=document.getElementById("video");video.srcObject=stream;await video.play();
-  if(!("BarcodeDetector" in window))throw new Error("Aparat działa, ale ta przeglądarka nie ma wbudowanego czytnika kodów. Wpisz kod ręcznie.");
+  if(!navigator.mediaDevices?.getUserMedia)throw new Error("Brak obsługi aparatu.");
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});
+  const video=document.getElementById("video");
+  video.srcObject=stream;
+  await video.play();
+  if(!("BarcodeDetector" in window))throw new Error("Brak czytnika kodów w tej przeglądarce.");
   detector=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code"]});
-  document.getElementById("scanStatus").textContent="Skieruj aparat na kod kreskowy.";
   scanTimer=setInterval(async()=>{
-   try{if(video.readyState<2)return;const codes=await detector.detect(video);if(codes.length){const code=codes[0].rawValue;document.getElementById("barcodeInput").value=code;addByBarcode();document.getElementById("scanStatus").textContent="Odczytano: "+code;}}
-   catch(e){}
+   try{
+    if(video.readyState<2)return;
+    const codes=await detector.detect(video);
+    if(codes.length){
+     const code=codes[0].rawValue;
+     document.getElementById("barcodeInput").value=code;
+     addByBarcode();
+     document.getElementById("scanStatus").textContent="Odczytano: "+code;
+    }
+   }catch(e){}
   },500);
- }catch(e){document.getElementById("scanStatus").textContent=e.message}
+ }catch(error){
+  document.getElementById("scanStatus").textContent=error.message;
+ }
 }
 function stopScanner(){
- if(scanTimer)clearInterval(scanTimer);scanTimer=null;
+ if(scanTimer)clearInterval(scanTimer);
+ scanTimer=null;
  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
- document.getElementById("video").srcObject=null;hide("scannerOverlay");
+ document.getElementById("video").srcObject=null;
+ hide("scannerOverlay");
 }
 renderCart();
 </script>
